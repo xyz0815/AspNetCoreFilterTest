@@ -1,0 +1,93 @@
+﻿@{
+    Layout = null;
+}
+
+<!doctype html>
+
+<html>
+<head>
+
+</head>
+<body>
+    <h2>Resource Filter "Body" Test</h2>
+    <h3>JSON body</h3>
+    <textarea id="jsonBody" cols="100" rows="10" style="display:block">{ "Dummy": true, "Body": "json" }</textarea>
+    <button id="btToggleRun">START POSTING</button>
+    <h3>Post Results</h3>
+    <div id="panel" style="width:500px;max-height:300px; overflow-y:auto">
+
+    </div>
+
+
+    <script>
+
+        ctx = {
+
+            _running: false,
+
+            onBtToggleRun: function (ev) {
+
+                ctx._running = !ctx._running;
+                ctx.btToggleRun.innerHTML = (ctx._running ? "STOP" : "START");
+                if (ctx._running) ctx.sendPost();
+            },
+
+            sendPost: function () {
+
+                if (!ctx._running) return;
+
+                // send 6 parallel requests in max 3 seconds:
+                for (let i = 0; i <= 5; ++i) {
+                    let waitForIt = Math.random() * 3000;
+                    //  only call sendPost again if i===1:
+                    window.setTimeout(() => ctx.postBody(i===1), waitForIt);
+                }
+            },
+
+            postBody: async function (cond) {
+
+                let jsonBody = ctx.jsonBody.value;
+
+                let response = await fetch("/api/bodyTest", {
+                    method: 'POST',
+                    cache: 'no-cache',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: jsonBody
+                });
+
+                let message;
+                if (response.ok) {
+                    let result = await response.json();
+
+                    let reflectedJson = result.jsonBody;
+                    message = result.message;
+
+                    if (reflectedJson != jsonBody) {
+                        message = "MISMATCH / " + message;
+                        console.warn("MISMATCH", reflectedJson);
+                    }
+                }
+                else {
+                    message = "HTTP ERROR " + response.status + " " + response.statusText;
+                }
+
+                ctx.panel.insertAdjacentHTML("afterbegin", "<div style='background-color:" + (message === "OK" ? "lightgreen" : "orange") + "'>" + (new Date().toLocaleTimeString()) + " " + message + "</div>");
+
+                if (cond) {
+                    ctx.sendPost();
+                }
+            }
+
+        };
+
+        ctx.btToggleRun = document.querySelector("#btToggleRun");
+        ctx.panel = document.querySelector("#panel");
+        ctx.jsonBody = document.querySelector("#jsonBody");
+
+        ctx.btToggleRun.addEventListener("click", ctx.onBtToggleRun);
+
+    </script>
+</body>
+</html>
